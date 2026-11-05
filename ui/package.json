@@ -14,7 +14,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/whistleblower-ui.js"
-    }
+    },
+    "./style.css": "./dist/whistleblower-ui.css"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

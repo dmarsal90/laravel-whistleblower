@@ -24,7 +24,7 @@ export interface ReporterMessage {
 }
 
 /** What the reporter sees when following up with the tracking code. */
-export interface FollowUp {
+export interface FollowUpData {
   status: ReportStatus
   received_at: string
   acknowledged_at: string | null
