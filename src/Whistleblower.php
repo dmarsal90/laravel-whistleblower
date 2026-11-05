@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Whistleblower;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use DateTimeImmutable;
+use Psr\Clock\ClockInterface;
+use Whistleblower\Domain\AuditEntry;
+use Whistleblower\Domain\Message;
+use Whistleblower\Domain\Page;
+use Whistleblower\Domain\Report;
 use Whistleblower\Enums\ReportStatus;
 use Whistleblower\Exceptions\InvalidTransition;
-use Whistleblower\Models\AuditLog;
-use Whistleblower\Models\Message;
-use Whistleblower\Models\Report;
+use Whistleblower\Exceptions\ReportNotFound;
+use Whistleblower\Port\ReportStore;
 
 /**
  * Report lifecycle. Every state change runs in a transaction on a freshly locked row and is audited.
@@ -21,51 +23,62 @@ use Whistleblower\Models\Report;
 final class Whistleblower
 {
     /** @param Deadlines $deadlines */
-    public function __construct(private readonly array $deadlines) {}
+    public function __construct(
+        private readonly ReportStore $store,
+        private readonly ClockInterface $clock,
+        private readonly array $deadlines,
+    ) {}
 
     /** @param array{subject: string, description: string, category?: string|null, contact_name?: string|null, contact_email?: string|null} $data */
     public function submit(array $data): Submission
     {
         $code = TrackingCode::generate();
-        $now = Carbon::now();
+        $now = $this->clock->now();
         $name = $this->blankToNull($data['contact_name'] ?? null);
         $email = $this->blankToNull($data['contact_email'] ?? null);
 
-        $report = new Report;
-        $report->forceFill([
-            'tracking_code_hash' => TrackingCode::hash((string) TrackingCode::normalize($code)),
-            'status' => ReportStatus::Received,
-            'category' => $data['category'] ?? null,
-            'subject' => $data['subject'],
-            'description' => $data['description'],
-            'anonymous' => $name === null && $email === null,
-            'reporter_name' => $name,
-            'reporter_email' => $email,
-            'received_at' => $now,
-            'acknowledgement_due_at' => $now->copy()->addDays($this->deadlines['acknowledgement_days']),
-            'resolution_due_at' => $now->copy()->addMonthsNoOverflow($this->deadlines['resolution_months']),
-        ]);
+        $report = new Report(
+            id: Ulid::generate($now),
+            trackingCodeHash: TrackingCode::hash((string) TrackingCode::normalize($code)),
+            status: ReportStatus::Received,
+            category: $data['category'] ?? null,
+            subject: $data['subject'],
+            description: $data['description'],
+            anonymous: $name === null && $email === null,
+            reporterName: $name,
+            reporterEmail: $email,
+            resolution: null,
+            receivedAt: $now,
+            acknowledgementDueAt: $now->modify("+{$this->deadlines['acknowledgement_days']} days"),
+            acknowledgedAt: null,
+            resolutionDueAt: self::addMonths($now, $this->deadlines['resolution_months']),
+        );
 
-        DB::transaction(function () use ($report): void {
-            $report->save();
-            $this->audit($report, 'reporter', null, 'submitted');
+        $this->store->transactional(function () use ($report): void {
+            $this->store->insert($report);
+            $this->audit($report->id, 'reporter', null, 'submitted');
         });
 
         return new Submission($report, $code);
+    }
+
+    public function find(string $id): ?Report
+    {
+        return $this->store->find($id);
     }
 
     public function findByCode(string $input): ?Report
     {
         $code = TrackingCode::normalize($input);
 
-        return $code === null ? null : Report::query()->where('tracking_code_hash', TrackingCode::hash($code))->first();
+        return $code === null ? null : $this->store->findByTrackingHash(TrackingCode::hash($code));
     }
 
     public function acknowledge(Report $report, string|int|null $actor): Report
     {
         return $this->transition($report, 'acknowledge', [ReportStatus::Received], $actor, 'acknowledged', function (Report $r): void {
             $r->status = ReportStatus::Acknowledged;
-            $r->acknowledged_at = Carbon::now();
+            $r->acknowledgedAt = $this->clock->now();
         });
     }
 
@@ -73,23 +86,22 @@ final class Whistleblower
     {
         return $this->transition($report, 'investigate', [ReportStatus::Received, ReportStatus::Acknowledged], $actor, 'investigation_started', function (Report $r): void {
             $r->status = ReportStatus::Investigating;
-            $r->investigation_started_at = Carbon::now();
+            $r->investigationStartedAt = $this->clock->now();
         });
     }
 
     /** Art. 9.2.d: a single extension of up to three more months for especially complex cases. */
     public function extendDeadline(Report $report, string|int|null $actor, string $justification): Report
     {
-        $report = $this->transition($report, 'extend', [ReportStatus::Acknowledged, ReportStatus::Investigating, ReportStatus::Received], $actor, 'deadline_extended', function (Report $r): void {
-            if ($r->extended_at !== null) {
+        $report = $this->transition($report, 'extend', [ReportStatus::Received, ReportStatus::Acknowledged, ReportStatus::Investigating], $actor, 'deadline_extended', function (Report $r): void {
+            if ($r->extendedAt !== null) {
                 throw InvalidTransition::for('extend twice', $r->status);
             }
-            $r->extended_at = Carbon::now();
-            $r->resolution_due_at = $r->received_at->copy()
-                ->addMonthsNoOverflow($this->deadlines['resolution_months'] + $this->deadlines['extension_months']);
+            $r->extendedAt = $this->clock->now();
+            $r->resolutionDueAt = self::addMonths($r->receivedAt, $this->deadlines['resolution_months'] + $this->deadlines['extension_months']);
         }, ['justification_length' => mb_strlen($justification)]);
 
-        // The justification can name people: keep it as a manager message, which is encrypted.
+        // The justification can name people: keep it as an internal note, which stores encrypt.
         $this->addMessage($report, 'manager', $actor, $justification, internal: true);
 
         return $report;
@@ -100,7 +112,7 @@ final class Whistleblower
         return $this->transition($report, 'resolve', [ReportStatus::Investigating], $actor, 'resolved', function (Report $r) use ($summary): void {
             $r->status = ReportStatus::Resolved;
             $r->resolution = $summary;
-            $r->resolved_at = Carbon::now();
+            $r->resolvedAt = $this->clock->now();
         });
     }
 
@@ -108,26 +120,20 @@ final class Whistleblower
     {
         return $this->transition($report, 'archive', [ReportStatus::Received, ReportStatus::Acknowledged, ReportStatus::Investigating, ReportStatus::Resolved], $actor, 'archived', function (Report $r): void {
             $r->status = ReportStatus::Archived;
-            $r->archived_at = Carbon::now();
+            $r->archivedAt = $this->clock->now();
         });
     }
 
     public function addMessage(Report $report, string $author, string|int|null $userId, string $body, bool $internal = false): Message
     {
-        if ($report->status === ReportStatus::Archived || $report->anonymized_at !== null) {
+        if ($report->status === ReportStatus::Archived || $report->anonymizedAt !== null) {
             throw InvalidTransition::for('message', $report->status);
         }
 
-        return DB::transaction(function () use ($report, $author, $userId, $body, $internal): Message {
-            $message = new Message;
-            $message->forceFill([
-                'report_id' => $report->getKey(),
-                'author' => $internal ? 'internal' : $author,
-                'user_id' => $userId === null ? null : (string) $userId,
-                'body' => $body,
-                'created_at' => Carbon::now(),
-            ])->save();
-            $this->audit($report, $author, $userId, $internal ? 'internal_note_added' : 'message_added');
+        return $this->store->transactional(function () use ($report, $author, $userId, $body, $internal): Message {
+            $message = new Message($report->id, $internal ? 'internal' : $author, $userId === null ? null : (string) $userId, $body, $this->clock->now());
+            $this->store->addMessage($message);
+            $this->audit($report->id, $author, $userId, $internal ? 'internal_note_added' : 'message_added');
 
             return $message;
         });
@@ -136,71 +142,76 @@ final class Whistleblower
     /** Records that a manager opened a report (art. 32.1 access must be traceable). */
     public function recordView(Report $report, string|int|null $actor): void
     {
-        $this->audit($report, 'manager', $actor, 'viewed');
+        $this->audit($report->id, 'manager', $actor, 'viewed');
     }
 
-    /** @return Builder<Report> */
-    public function open(): Builder
+    /** @return list<Message> */
+    public function messages(Report $report, bool $includeInternal): array
     {
-        return Report::query()->whereNotIn('status', [ReportStatus::Resolved->value, ReportStatus::Archived->value]);
+        return $this->store->messages($report->id, $includeInternal);
     }
 
-    /**
-     * Erases personal data and content, keeping the registry entry (art. 26 and 32.4).
-     */
+    /** @return list<AuditEntry> */
+    public function auditTrail(Report $report): array
+    {
+        return $this->store->auditEntries($report->id);
+    }
+
+    public function list(?ReportStatus $status, bool $overdue, int $page, int $perPage = 25): Page
+    {
+        return $this->store->page($status, $overdue, $this->clock->now(), max(1, $page), $perPage);
+    }
+
+    /** Erases personal data and content, keeping the registry entry (art. 26 and 32.4). */
     public function anonymize(Report $report, string $reason): void
     {
-        DB::transaction(function () use ($report, $reason): void {
-            Message::query()->where('report_id', $report->getKey())->delete();
-            $report->forceFill([
-                'subject' => null,
-                'description' => null,
-                'reporter_name' => null,
-                'reporter_email' => null,
-                'resolution' => null,
-                'category' => null,
-                'anonymized_at' => Carbon::now(),
-            ]);
-            if ($report->status !== ReportStatus::Archived) {
-                $report->status = ReportStatus::Archived;
-                $report->archived_at = Carbon::now();
+        $this->store->transactional(function () use ($report, $reason): void {
+            $locked = $this->store->lockById($report->id) ?? throw new ReportNotFound($report->id);
+            $now = $this->clock->now();
+            $this->store->deleteMessages($locked->id);
+            $locked->subject = $locked->description = $locked->reporterName = $locked->reporterEmail = null;
+            $locked->resolution = $locked->category = null;
+            $locked->anonymizedAt = $now;
+            if ($locked->status !== ReportStatus::Archived) {
+                $locked->status = ReportStatus::Archived;
+                $locked->archivedAt = $now;
             }
-            $report->save();
-            $this->audit($report, 'system', null, 'anonymized', ['reason' => $reason]);
+            $this->store->update($locked);
+            $this->audit($locked->id, 'system', null, 'anonymized', ['reason' => $reason]);
         });
     }
 
     /**
      * @param  list<ReportStatus>  $from
+     * @param  callable(Report): void  $change
      * @param  array<string, scalar|null>  $context
      */
     private function transition(Report $report, string $verb, array $from, string|int|null $actor, string $action, callable $change, array $context = []): Report
     {
-        return DB::transaction(function () use ($report, $verb, $from, $actor, $action, $change, $context): Report {
-            $locked = Report::query()->lockForUpdate()->findOrFail($report->id);
-            if (! in_array($locked->status, $from, true) || $locked->anonymized_at !== null) {
+        return $this->store->transactional(function () use ($report, $verb, $from, $actor, $action, $change, $context): Report {
+            $locked = $this->store->lockById($report->id) ?? throw new ReportNotFound($report->id);
+            if (! in_array($locked->status, $from, true) || $locked->anonymizedAt !== null) {
                 throw InvalidTransition::for($verb, $locked->status);
             }
             $change($locked);
-            $locked->save();
-            $this->audit($locked, 'manager', $actor, $action, $context);
+            $this->store->update($locked);
+            $this->audit($locked->id, 'manager', $actor, $action, $context);
 
             return $locked;
         });
     }
 
     /** @param array<string, scalar|null> $context */
-    private function audit(Report $report, string $actorType, string|int|null $actorId, string $action, array $context = []): void
+    private function audit(string $reportId, string $actorType, string|int|null $actorId, string $action, array $context = []): void
     {
-        $log = new AuditLog;
-        $log->forceFill([
-            'report_id' => $report->getKey(),
-            'actor_type' => $actorType,
-            'actor_id' => $actorId === null ? null : (string) $actorId,
-            'action' => $action,
-            'context' => $context === [] ? null : $context,
-            'created_at' => Carbon::now(),
-        ])->save();
+        $this->store->addAudit(new AuditEntry(
+            $reportId,
+            $actorType,
+            $actorId === null ? null : (string) $actorId,
+            $action,
+            $context === [] ? null : $context,
+            $this->clock->now(),
+        ));
     }
 
     private function blankToNull(?string $value): ?string
@@ -208,5 +219,13 @@ final class Whistleblower
         $value = $value === null ? null : trim($value);
 
         return $value === '' ? null : $value;
+    }
+
+    private static function addMonths(DateTimeImmutable $date, int $months): DateTimeImmutable
+    {
+        $day = (int) $date->format('j');
+        $first = $date->setDate((int) $date->format('Y'), (int) $date->format('n'), 1)->modify("+{$months} months");
+
+        return $first->setDate((int) $first->format('Y'), (int) $first->format('n'), min($day, (int) $first->format('t')));
     }
 }

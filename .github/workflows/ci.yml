@@ -8,33 +8,38 @@ on:
 permissions:
   contents: read
 
+env:
+  SYMFONY_PACKAGES: framework-bundle security-bundle rate-limiter validator console mailer browser-kit cache yaml dependency-injection config http-kernel
+
 jobs:
   ci:
-    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} / Symfony ${{ matrix.symfony }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { php: '8.2', laravel: '12.*', testbench: '10.*' }
-          - { php: '8.3', laravel: '12.*', testbench: '10.*' }
-          - { php: '8.3', laravel: '13.*', testbench: '11.*' }
-          - { php: '8.4', laravel: '12.*', testbench: '10.*' }
-          - { php: '8.4', laravel: '13.*', testbench: '11.*' }
-          - { php: '8.5', laravel: '12.*', testbench: '10.*' }
-          - { php: '8.5', laravel: '13.*', testbench: '11.*' }
+          - { php: '8.2', laravel: '12.*', testbench: '10.*', symfony: '7.4.*' }
+          - { php: '8.3', laravel: '12.*', testbench: '10.*', symfony: '7.4.*' }
+          - { php: '8.3', laravel: '13.*', testbench: '11.*', symfony: '7.4.*' }
+          - { php: '8.4', laravel: '12.*', testbench: '10.*', symfony: '7.4.*' }
+          - { php: '8.4', laravel: '13.*', testbench: '11.*', symfony: '8.*' }
+          - { php: '8.5', laravel: '12.*', testbench: '10.*', symfony: '7.4.*' }
+          - { php: '8.5', laravel: '13.*', testbench: '11.*', symfony: '8.*' }
     steps:
       - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: mbstring, pdo_sqlite
+          extensions: mbstring, pdo_sqlite, sodium
           coverage: none
 
       - name: Install dependencies
         run: |
-          composer require --dev --no-update "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}"
+          symfony=""
+          for package in $SYMFONY_PACKAGES; do symfony="$symfony symfony/$package:${{ matrix.symfony }}"; done
+          composer require --dev --no-update "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" $symfony
           composer update --prefer-dist --no-progress --with-all-dependencies
 
       - name: Lint
@@ -75,7 +80,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_mysql
+          extensions: mbstring, pdo_mysql, sodium
           coverage: none
 
       - name: Install dependencies
