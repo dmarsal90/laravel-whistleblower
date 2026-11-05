@@ -1,10 +1,11 @@
 {
     "name": "dmarsal90/whistleblower",
-    "description": "Internal whistleblowing channel for Laravel, built for Spain's Ley 2/2023: anonymous reports, tracking codes, legal deadlines and data retention.",
+    "description": "Internal whistleblowing channel for Laravel and Symfony, built for Spain's Ley 2/2023: anonymous reports, tracking codes, legal deadlines and data retention.",
     "type": "library",
     "license": "MIT",
     "keywords": [
         "laravel",
+        "symfony",
         "whistleblowing",
         "whistleblower",
         "canal-de-denuncias",
@@ -29,13 +30,26 @@
         "psr/clock": "^1.0"
     },
     "require-dev": {
+        "doctrine/dbal": "^4.0",
         "larastan/larastan": "^3.0",
         "laravel/framework": "^12.0 || ^13.0",
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^10.0 || ^11.0",
         "pestphp/pest": "^3.8 || ^4.0",
         "pestphp/pest-plugin-laravel": "^3.0 || ^4.0",
-        "phpstan/phpstan": "^2.1"
+        "phpstan/phpstan": "^2.1",
+        "symfony/browser-kit": "^7.4 || ^8.0",
+        "symfony/cache": "^7.4 || ^8.0",
+        "symfony/config": "^7.4 || ^8.0",
+        "symfony/console": "^7.4 || ^8.0",
+        "symfony/dependency-injection": "^7.4 || ^8.0",
+        "symfony/framework-bundle": "^7.4 || ^8.0",
+        "symfony/http-kernel": "^7.4 || ^8.0",
+        "symfony/mailer": "^7.4 || ^8.0",
+        "symfony/rate-limiter": "^7.4 || ^8.0",
+        "symfony/security-bundle": "^7.4 || ^8.0",
+        "symfony/validator": "^7.4 || ^8.0",
+        "symfony/yaml": "^7.4 || ^8.0"
     },
     "autoload": {
         "psr-4": {
@@ -69,6 +83,9 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "suggest": {
-        "illuminate/support": "Required to use the Whistleblower\\Laravel adapter (Laravel 12 or 13)."
+        "illuminate/support": "Required to use the Whistleblower\\Laravel adapter (Laravel 12 or 13).",
+        "symfony/framework-bundle": "Required to use the Whistleblower\\Symfony bundle (Symfony 7.4 or 8), with symfony/security-bundle, symfony/rate-limiter, symfony/validator and doctrine/dbal.",
+        "symfony/mailer": "Sends deadline alerts by e-mail from the Symfony bundle.",
+        "ext-sodium": "Required by the Symfony bundle to encrypt personal data at rest."
     }
 }
