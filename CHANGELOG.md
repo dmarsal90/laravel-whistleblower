@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Vue 3 UI package (`ui/`): report form, follow-up, case list and case detail, in Spanish and English.
 - Symfony bundle (Doctrine DBAL storage, libsodium encryption, security attribute, rate limiter, console commands).
 - Report lifecycle with legal deadlines, anonymous tracking codes and an audit trail.
 - Daily commands for deadline alerts and data retention.
