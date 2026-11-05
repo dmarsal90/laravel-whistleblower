@@ -1,10 +1,10 @@
 {
-    "name": "dmarsal90/laravel-whistleblower",
+    "name": "dmarsal90/whistleblower",
     "description": "Internal whistleblowing channel for Laravel, built for Spain's Ley 2/2023: anonymous reports, tracking codes, legal deadlines and data retention.",
     "type": "library",
     "license": "MIT",
     "keywords": ["laravel", "whistleblowing", "whistleblower", "canal-de-denuncias", "ley-2-2023", "compliance", "gdpr", "spain"],
-    "homepage": "https://github.com/dmarsal90/laravel-whistleblower",
+    "homepage": "https://github.com/dmarsal90/whistleblower",
     "authors": [
         {
             "name": "David Marsal Ivars",
@@ -12,8 +12,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/dmarsal90/laravel-whistleblower/issues",
-        "source": "https://github.com/dmarsal90/laravel-whistleblower"
+        "issues": "https://github.com/dmarsal90/whistleblower/issues",
+        "source": "https://github.com/dmarsal90/whistleblower"
     },
     "require": {
         "php": "^8.2",
