@@ -41,6 +41,17 @@ describe('ReportDetail', () => {
     expect(wrapper.find('.wb-audit').text()).toContain('viewed')
   })
 
+  it('keeps the acknowledgement deadline and shows when it was acknowledged', async () => {
+    const { wrapper } = setup(detail({ status: 'acknowledged', acknowledgement_due_at: '2026-01-08T12:00:00Z', acknowledged_at: '2026-01-03T12:00:00Z' }))
+    await flushPromises()
+    const facts = wrapper.find('.wb-facts').text()
+
+    expect(facts).toContain('Acuse antes de')
+    expect(facts).toContain('8 de enero de 2026')
+    expect(facts).toContain('Recibo acusado el')
+    expect(facts).toContain('3 de enero de 2026')
+  })
+
   it('says anonymous when there is no contact', async () => {
     const { wrapper } = setup(detail({ reporter_name: null, reporter_email: null }))
     await flushPromises()

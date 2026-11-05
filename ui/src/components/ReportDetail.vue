@@ -84,7 +84,11 @@ onMounted(load)
 
       <dl class="wb-facts">
         <dt>{{ t('list.colAckDue') }}</dt>
-        <dd>{{ report.acknowledged_at ? tr.date(report.acknowledged_at) : tr.date(report.acknowledgement_due_at) }}</dd>
+        <dd>{{ tr.date(report.acknowledgement_due_at) }}</dd>
+        <template v-if="report.acknowledged_at">
+          <dt>{{ t('detail.acknowledgedOn') }}</dt>
+          <dd>{{ tr.date(report.acknowledged_at) }}</dd>
+        </template>
         <template v-if="report.resolution_due_at">
           <dt>{{ t('list.colResolutionDue') }}</dt>
           <dd>{{ tr.date(report.resolution_due_at) }}</dd>
