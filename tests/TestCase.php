@@ -20,6 +20,19 @@ abstract class TestCase extends Orchestra
         /** @var Repository $config */
         $config = $app['config'];
         $config->set('database.default', 'testing');
+        if (getenv('DB_CONNECTION') === 'mysql') {
+            $config->set('database.default', 'mysql');
+            $config->set('database.connections.mysql', [
+                'driver' => 'mysql',
+                'host' => getenv('DB_HOST') ?: '127.0.0.1',
+                'port' => getenv('DB_PORT') ?: '3306',
+                'database' => getenv('DB_DATABASE') ?: 'testing',
+                'username' => getenv('DB_USERNAME') ?: 'root',
+                'password' => getenv('DB_PASSWORD') ?: '',
+                'charset' => 'utf8mb4',
+                'collation' => 'utf8mb4_unicode_ci',
+            ]);
+        }
         $config->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
     }
 
