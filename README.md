@@ -24,7 +24,7 @@ anonymous reports with a tracking code, the legal deadlines, an audit trail and 
 
 ## Requirements
 
-PHP 8.2+, Laravel 11, 12 or 13. Content is encrypted with your `APP_KEY`: **if you rotate or lose
+PHP 8.2+ with Laravel 12, or PHP 8.3+ with Laravel 13. Content is encrypted with your `APP_KEY`: **if you rotate or lose
 it, existing reports become unreadable.**
 
 ## Installation
