@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Whistleblower\Models;
+namespace Whistleblower\Laravel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;

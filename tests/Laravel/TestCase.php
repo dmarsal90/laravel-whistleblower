@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Whistleblower\Tests;
+namespace Whistleblower\Tests\Laravel;
 
 use Illuminate\Contracts\Config\Repository;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Whistleblower\WhistleblowerServiceProvider;
+use Whistleblower\Laravel\WhistleblowerServiceProvider;
 
 abstract class TestCase extends Orchestra
 {
@@ -38,6 +38,6 @@ abstract class TestCase extends Orchestra
 
     protected function defineDatabaseMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
     }
 }

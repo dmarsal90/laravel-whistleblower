@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Whistleblower\Http\Controllers;
+namespace Whistleblower\Laravel\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Validation\Rule;
+use Whistleblower\Domain\Report;
 use Whistleblower\Exceptions\InvalidTransition;
-use Whistleblower\Models\Report;
+use Whistleblower\Presenter;
 use Whistleblower\Whistleblower;
 
 /**
@@ -35,8 +36,8 @@ final class PublicReportController extends Controller
 
         return $this->noStore(response()->json([
             'tracking_code' => $submission->trackingCode,
-            'received_at' => $submission->report->received_at->toIso8601String(),
-            'acknowledgement_due_at' => $submission->report->acknowledgement_due_at->toIso8601String(),
+            'received_at' => $submission->report->receivedAt->format(DATE_ATOM),
+            'acknowledgement_due_at' => $submission->report->acknowledgementDueAt->format(DATE_ATOM),
         ], 201));
     }
 
@@ -47,16 +48,7 @@ final class PublicReportController extends Controller
             return $this->notFound();
         }
 
-        return $this->noStore(response()->json([
-            'status' => $report->status->value,
-            'received_at' => $report->received_at->toIso8601String(),
-            'acknowledged_at' => $report->acknowledged_at?->toIso8601String(),
-            'resolution_due_at' => $report->resolution_due_at->toIso8601String(),
-            'resolution' => $report->resolution,
-            'messages' => $report->messages()->where('author', '!=', 'internal')->get()
-                ->map(fn ($m): array => ['author' => $m->author, 'body' => $m->body, 'created_at' => $m->created_at->toIso8601String()])
-                ->all(),
-        ]));
+        return $this->noStore(response()->json(Presenter::followUp($report, $this->whistleblower->messages($report, false))));
     }
 
     public function message(Request $request): JsonResponse

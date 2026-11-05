@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Auth\GenericUser;
 use Illuminate\Support\Facades\Gate;
-use Whistleblower\Models\Report;
+use Whistleblower\Laravel\Models\Report;
 use Whistleblower\Whistleblower;
 
 beforeEach(function (): void {
@@ -39,8 +39,8 @@ it('restricts categories when configured', function (): void {
 
 it('lets the reporter follow the case with the code and exchange messages', function (): void {
     $code = submitReport($this->payload)['tracking_code'];
-    $report = Report::query()->firstOrFail();
     $wb = app(Whistleblower::class);
+    $report = $wb->find(Report::query()->firstOrFail()->id);
     $wb->addMessage($report, 'manager', 42, 'Visible reply');
     $wb->addMessage($report, 'manager', 42, 'Internal note', internal: true);
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Whistleblower;
 
-use Whistleblower\Models\Report;
+use Whistleblower\Domain\Report;
 
 /** Result of a submission. The tracking code exists only here: it cannot be recovered later. */
 final readonly class Submission

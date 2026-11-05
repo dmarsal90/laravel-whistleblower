@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use Whistleblower\Http\Controllers\ManageReportController;
-use Whistleblower\Http\Controllers\PublicReportController;
+use Whistleblower\Laravel\Http\Controllers\ManageReportController;
+use Whistleblower\Laravel\Http\Controllers\PublicReportController;
 
 $prefix = (string) config('whistleblower.routes.prefix');
 

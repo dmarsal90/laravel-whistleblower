@@ -10,22 +10,9 @@ namespace Whistleblower;
  */
 final class TrackingCode
 {
-    private const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-
     public static function generate(): string
     {
-        $bytes = random_bytes(10);
-        $bits = '';
-        foreach (str_split($bytes) as $byte) {
-            $bits .= str_pad(decbin(ord($byte)), 8, '0', STR_PAD_LEFT);
-        }
-
-        $code = '';
-        foreach (str_split($bits, 5) as $chunk) {
-            $code .= self::ALPHABET[(int) bindec($chunk)];
-        }
-
-        return implode('-', str_split($code, 4));
+        return implode('-', str_split(Crockford::encode(random_bytes(10)), 4));
     }
 
     /** Returns the canonical form, or null when the input cannot be a tracking code. */
@@ -34,7 +21,7 @@ final class TrackingCode
         $code = strtr(strtoupper($input), ['I' => '1', 'L' => '1', 'O' => '0']);
         $code = (string) preg_replace('/[\s-]/', '', $code);
 
-        return preg_match('/^['.self::ALPHABET.']{16}$/', $code) === 1 ? $code : null;
+        return preg_match('/^['.Crockford::ALPHABET.']{16}$/', $code) === 1 ? $code : null;
     }
 
     public static function hash(string $normalized): string

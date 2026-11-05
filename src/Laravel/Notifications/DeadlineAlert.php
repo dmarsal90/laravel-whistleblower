@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Whistleblower\Notifications;
+namespace Whistleblower\Laravel\Notifications;
 
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -27,7 +27,7 @@ final class DeadlineAlert extends Notification
             ->subject(trans("whistleblower::messages.alert.subject_{$state}", ['deadline' => $deadline]))
             ->line(__("whistleblower::messages.alert.body_{$state}", [
                 'deadline' => $deadline,
-                'date' => $this->event->dueAt->toDateString(),
+                'date' => $this->event->dueAt->format('Y-m-d'),
                 'id' => $this->event->reportId,
             ]));
     }
