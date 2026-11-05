@@ -1,4 +1,4 @@
-# Laravel Whistleblower
+# Whistleblower
 
 An internal whistleblowing channel for Laravel, built around Spain's
 [Ley 2/2023](https://www.boe.es/buscar/act.php?id=BOE-A-2023-4513) (protección de las personas
@@ -30,7 +30,7 @@ it, existing reports become unreadable.**
 ## Installation
 
 ```bash
-composer require dmarsal90/laravel-whistleblower
+composer require dmarsal90/whistleblower
 php artisan migrate
 php artisan vendor:publish --tag=whistleblower-config
 ```
