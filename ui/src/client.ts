@@ -1,5 +1,5 @@
 import type {
-  FollowUp, ListFilters, Page, Receipt, ReportDetail, ReportSummary, SubmitInput,
+  FollowUpData, ListFilters, Page, Receipt, ReportDetailData, ReportSummary, SubmitInput,
 } from './types'
 
 export interface ClientOptions {
@@ -64,7 +64,7 @@ export function createClient(options: ClientOptions = {}) {
   return {
     /** The tracking code goes in the body, never in the URL. */
     submit: (input: SubmitInput) => request<Receipt>('POST', 'reports', input),
-    followUp: (trackingCode: string) => request<FollowUp>('POST', 'reports/status', { tracking_code: trackingCode }),
+    followUp: (trackingCode: string) => request<FollowUpData>('POST', 'reports/status', { tracking_code: trackingCode }),
     reply: (trackingCode: string, body: string) =>
       request<{ status: string }>('POST', 'reports/messages', { tracking_code: trackingCode, body }),
 
@@ -77,7 +77,7 @@ export function createClient(options: ClientOptions = {}) {
 
         return request<Page<ReportSummary>>('GET', 'manage/reports', undefined, query)
       },
-      show: (id: string) => request<ReportDetail>('GET', `manage/reports/${encodeURIComponent(id)}`),
+      show: (id: string) => request<ReportDetailData>('GET', `manage/reports/${encodeURIComponent(id)}`),
       acknowledge: (id: string) => manage(id, 'acknowledge'),
       investigate: (id: string) => manage(id, 'investigate'),
       extend: (id: string, justification: string) => manage(id, 'extend', { justification }),

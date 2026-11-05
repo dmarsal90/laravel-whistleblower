@@ -24,7 +24,7 @@ export interface ReporterMessage {
 }
 
 /** What the reporter sees when following up with the tracking code. */
-export interface FollowUp {
+export interface FollowUpData {
   status: ReportStatus
   received_at: string
   acknowledged_at: string | null
@@ -45,7 +45,9 @@ export interface ReportSummary {
   anonymized: boolean
 }
 
-export interface ManagerMessage extends ReporterMessage {
+export interface ManagerMessage extends Omit<ReporterMessage, 'author'> {
+  /** 'internal' notes are never shown to the reporter. */
+  author: 'reporter' | 'manager' | 'internal'
   user_id: string | number | null
 }
 
@@ -56,7 +58,7 @@ export interface AuditEntry {
   created_at: string
 }
 
-export interface ReportDetail extends ReportSummary {
+export interface ReportDetailData extends ReportSummary {
   subject: string | null
   description: string | null
   reporter_name: string | null

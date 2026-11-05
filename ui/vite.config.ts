@@ -7,5 +7,6 @@ export default defineConfig({
     lib: { entry: 'src/index.ts', formats: ['es'], fileName: 'whistleblower-ui' },
     rollupOptions: { external: ['vue'] },
   },
-  test: { environment: 'jsdom', include: ['tests/**/*.test.ts'] },
+  // The components format dates in the browser's timezone; tests pin it so they do not depend on the machine.
+  test: { environment: 'jsdom', include: ['tests/**/*.test.ts'], env: { TZ: 'UTC' } },
 })

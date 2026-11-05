@@ -140,13 +140,17 @@ Management routes (`manage/...`):
 
 Unauthenticated requests get 401 and authenticated users without the ability get 403.
 
+## UI
+
+Vue 3 components for the public form, the follow-up page and case management live in [`ui/`](ui/README.md).
+They are optional: the API stands on its own.
+
 ## Not included (yet)
 
 - Verbal channel (art. 7.2): phone or voice messages, and in-person meetings.
 - File attachments.
 - Per-report access lists. Art. 32.1 limits access to the manager, plus HR or legal only when
   measures may follow. Today one ability controls everything, so enforce that split in your Gate or voter.
-- A UI. Build your own on the API.
 
 ## Privacy notes
 
